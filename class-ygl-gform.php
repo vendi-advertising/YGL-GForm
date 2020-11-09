@@ -39,6 +39,17 @@ class YGL_Gform extends GFAddOn
         add_action('gform_after_submission', array($this, 'ygl_after_submission'), 10, 2);
     }
 
+    private function write_log($log)
+    {
+        if (true === WP_DEBUG) {
+            if (is_array($log) || is_object($log)) {
+                error_log(print_r($log, true));
+            } else {
+                error_log($log);
+            }
+        }
+    }
+
     /**
      * This function maps the fields and then sends the data to the endpoint.
      *
@@ -47,22 +58,6 @@ class YGL_Gform extends GFAddOn
      */
     public function ygl_after_submission($entry, $form)
     {
-
-        if (!function_exists('write_log')) {
-
-            function write_log($log)
-            {
-                if (true === WP_DEBUG) {
-                    if (is_array($log) || is_object($log)) {
-                        error_log(print_r($log, true));
-                    } else {
-                        error_log($log);
-                    }
-                }
-            }
-
-        }
-
         $active_form = $form['id'];
 
         $settings = $this->get_form_settings($form);
@@ -83,13 +78,13 @@ class YGL_Gform extends GFAddOn
                     $site_name = get_bloginfo('name');
                     $email_subject = 'YGL GForm Debug mail for form id ' . $active_form . ' from ' . $site_name;
                 } else {
-                    write_log('There is an issue with the debug email attached to the YGL Gform configuration. Please check the configuration.');
+                    $this->write_log('There is an issue with the debug email attached to the YGL Gform configuration. Please check the configuration.');
                 }
             }
 
             if (empty($plugin_settings['username']) || empty($plugin_settings['password'])) {
                 $message = 'YGL GForm has a form set to send, but no Username or Password has been set. Form ID: ' . $active_form . ' Please set the Username and Password in the YGL GForm settings menu.';
-                write_log($message);
+                $this->write_log($message);
                 if ($send_mail) {
                     wp_mail($target_email, $email_subject, $message);
                 }
@@ -99,7 +94,7 @@ class YGL_Gform extends GFAddOn
                 $password = $plugin_settings['password'];
             }
 
-            // write_log('YGL sending form ' . $active_form);
+            // $this->write_log('YGL sending form ' . $active_form);
 
             $json_settings = json_encode($settings);
 
@@ -161,7 +156,7 @@ class YGL_Gform extends GFAddOn
                 $community = $settings['community_id'];
             } else {
                 $message = 'YGL Gform has a form set to send, but no Community ID is atached to the form. Form ID: ' . $active_form . ' Please set the Community ID in the form\'s setting page.';
-                write_log($message);
+                $this->write_log($message);
                 if ($send_mail) {
                     wp_mail($target_email, $email_subject, $message);
                 }
@@ -171,7 +166,7 @@ class YGL_Gform extends GFAddOn
             $base_url = $plugin_settings['target_url'];
             $post_url = rtrim($base_url, '/') . '/' . $community . '/leads';
 
-            // write_log($post_url);
+            // $this->write_log($post_url);
 
             $send_w_curl = false;
 
@@ -205,7 +200,7 @@ class YGL_Gform extends GFAddOn
                 $info = curl_getinfo($ch);
                 $response = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
 
-                // write_log('cURL used to post to You\'ve Got Leads. Query Sent: ' . $json_query . ' Response: ' . $response . ' Result: ' . $result);
+                // $this->write_log('cURL used to post to You\'ve Got Leads. Query Sent: ' . $json_query . ' Response: ' . $response . ' Result: ' . $result);
 
                 if ($result === false) {
                     $error = curl_error($ch);
@@ -216,7 +211,7 @@ class YGL_Gform extends GFAddOn
                     $message = 'cURL used to post Gravity Form ID #' . $active_form . ' to You\'ve Got Leads. Query Sent: ' . $json_query . ' Response: ' . $response . ' Result: ' . $result;
                 }
 
-                write_log($message);
+                $this->write_log($message);
 
                 if ($send_mail) {
                     wp_mail($target_email, $email_subject, $message);
@@ -250,7 +245,7 @@ class YGL_Gform extends GFAddOn
                     $message = 'Wordpress Remote Post used to post Gravity Form ID #' . $active_form . ' to You\'ve Got Leads. Query Sent: ' . $json_query . ' Response: ' . wp_remote_retrieve_response_code($response) . ' - ' . wp_remote_retrieve_response_message($response) . ' Result: ' . wp_remote_retrieve_body($response);
                 }
 
-                write_log($message);
+                $this->write_log($message);
 
                 if ($send_mail) {
                     wp_mail($target_email, $email_subject, $message);
@@ -259,7 +254,7 @@ class YGL_Gform extends GFAddOn
             }
 
         } else {
-            // write_log('YGL not sending form ' . $active_form);
+            // $this->write_log('YGL not sending form ' . $active_form);
         }
 
     }
