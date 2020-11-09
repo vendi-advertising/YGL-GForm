@@ -1,5 +1,8 @@
 <?php
 
+/** @noinspection PhpUndefinedMethodInspection */
+/** @noinspection PhpUnused */
+
 GFForms::include_addon_framework();
 
 class YGL_Gform extends GFAddOn
@@ -108,7 +111,7 @@ class YGL_Gform extends GFAddOn
                 $lead_source_id = $plugin_settings['lead_source_id'];
             }
 
-            if (isset($settings['over_lead_source_rank']) && trim($settings['over_lead_source_rank']) != "") {
+            if (isset($settings['over_lead_source_rank']) && trim($settings['over_lead_source_rank']) !== "") {
                 $lead_source_rank = $settings['over_lead_source_rank'];
             } else {
                 $lead_source_rank = $plugin_settings['lead_source_rank'];
@@ -153,7 +156,7 @@ class YGL_Gform extends GFAddOn
             } else if (isset($settings['community_id']) && !empty($settings['community_id'])) {
                 $community = $settings['community_id'];
             } else {
-                $function_call_result_message = 'YGL Gform has a form set to send, but no Community ID is atached to the form. Form ID: ' . $active_form . ' Please set the Community ID in the form\'s setting page.';
+                $function_call_result_message = 'YGL Gform has a form set to send, but no Community ID is attached to the form. Form ID: ' . $active_form . ' Please set the Community ID in the form\'s setting page.';
                 $this->write_log($function_call_result_message);
                 $this->maybe_send_debug_email($function_call_result_message);
                 return;
@@ -247,6 +250,7 @@ class YGL_Gform extends GFAddOn
         $settings = $this->get_form_settings($form);
         if (isset($settings['enabled']) && true == $settings['enabled']) {
             $text = $this->get_plugin_setting('mytextbox');
+            // TODO: Escape
             $button = "<div>{$text}</div>" . $button;
         }
 
@@ -393,7 +397,7 @@ class YGL_Gform extends GFAddOn
             $valid = true;
         }
 
-        if (!preg_match('/https\:\/\//i', $field_value)) {
+        if (!preg_match('/https:\/\//i', $field_value)) {
             $valid = false;
         }
 
@@ -554,6 +558,8 @@ class YGL_Gform extends GFAddOn
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
         // curl_setopt($ch, CURLOPT_MAXREDIRS, 0);
+
+        //TODO: Disable?
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
