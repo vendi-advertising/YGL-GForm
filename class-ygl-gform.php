@@ -83,10 +83,10 @@ class YGL_Gform extends GFAddOn
             }
 
             if (empty($plugin_settings['username']) || empty($plugin_settings['password'])) {
-                $message = 'YGL GForm has a form set to send, but no Username or Password has been set. Form ID: ' . $active_form . ' Please set the Username and Password in the YGL GForm settings menu.';
-                $this->write_log($message);
+                $function_call_result_message = 'YGL GForm has a form set to send, but no Username or Password has been set. Form ID: ' . $active_form . ' Please set the Username and Password in the YGL GForm settings menu.';
+                $this->write_log($function_call_result_message);
                 if ($send_mail) {
-                    wp_mail($target_email, $email_subject, $message);
+                    wp_mail($target_email, $email_subject, $function_call_result_message);
                 }
                 return;
             } else {
@@ -155,10 +155,10 @@ class YGL_Gform extends GFAddOn
             } else if (isset($settings['community_id']) && !empty($settings['community_id'])) {
                 $community = $settings['community_id'];
             } else {
-                $message = 'YGL Gform has a form set to send, but no Community ID is atached to the form. Form ID: ' . $active_form . ' Please set the Community ID in the form\'s setting page.';
-                $this->write_log($message);
+                $function_call_result_message = 'YGL Gform has a form set to send, but no Community ID is atached to the form. Form ID: ' . $active_form . ' Please set the Community ID in the form\'s setting page.';
+                $this->write_log($function_call_result_message);
                 if ($send_mail) {
-                    wp_mail($target_email, $email_subject, $message);
+                    wp_mail($target_email, $email_subject, $function_call_result_message);
                 }
                 return;
             }
@@ -175,82 +175,15 @@ class YGL_Gform extends GFAddOn
             }
 
             if ($send_w_curl) {
-
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $post_url);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $json_query);
-                curl_setopt($ch, CURLOPT_POST, 1);
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
-                // curl_setopt($ch, CURLOPT_MAXREDIRS, 0);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLINFO_HEADER_OUT, true);
-
-                curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-                        'Authorization: BASIC ' . $encode_key,
-                        'Accept: application/json',
-                        'Content-Type: application/json'
-                    )
-                );
-
-                $result = curl_exec($ch);
-                $error = curl_error($ch);
-
-                $info = curl_getinfo($ch);
-                $response = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-
-                // $this->write_log('cURL used to post to You\'ve Got Leads. Query Sent: ' . $json_query . ' Response: ' . $response . ' Result: ' . $result);
-
-                if ($result === false) {
-                    $error = curl_error($ch);
-                    $error_number = curl_errno($ch);
-                    $message = 'cURL error posting Gravity Form ID #' . $active_form . ' to You\'ve Got Leads. Query Sent: ' . $json_query . ' Error information: ' . $error_number . ' ' . $error;
-
-                } else {
-                    $message = 'cURL used to post Gravity Form ID #' . $active_form . ' to You\'ve Got Leads. Query Sent: ' . $json_query . ' Response: ' . $response . ' Result: ' . $result;
-                }
-
-                $this->write_log($message);
-
-                if ($send_mail) {
-                    wp_mail($target_email, $email_subject, $message);
-                }
-
+                $function_call_result_message = $this->send_using_curl($encode_key, $post_url, $json_query, $active_form);
             } else {
+                $function_call_result_message = $this->send_using_remote_post($encode_key, $post_url, $json_query, $active_form);
+            }
 
-                $headers = array(
-                    'Authorization' => 'BASIC ' . $encode_key,
-                    'Accept' => 'application/json',
-                    'Content-type' => 'application/json'
-                );
+            $this->write_log($function_call_result_message);
 
-                $em_connect = array(
-                    'method' => 'POST',
-                    'timeout' => 15,
-                    'redirection' => 5,
-                    'httpversion' => '1.0',
-                    'blocking' => true,
-                    'headers' => $headers,
-                    'body' => $json_query,
-                    'cookies' => array()
-                );
-
-                $response = wp_remote_post($post_url, $em_connect);
-
-                if (is_wp_error($response)) {
-                    $error_message = $response->get_error_message();
-                    $message = 'Wordpress Remote Post error posting Gravity Form ID #' . $active_form . ' to You\'ve Got Leads. Query Sent: ' . $json_query . ' Error information: ' . $error_message;
-                } else {
-                    $message = 'Wordpress Remote Post used to post Gravity Form ID #' . $active_form . ' to You\'ve Got Leads. Query Sent: ' . $json_query . ' Response: ' . wp_remote_retrieve_response_code($response) . ' - ' . wp_remote_retrieve_response_message($response) . ' Result: ' . wp_remote_retrieve_body($response);
-                }
-
-                $this->write_log($message);
-
-                if ($send_mail) {
-                    wp_mail($target_email, $email_subject, $message);
-                }
-
+            if ($send_mail) {
+                wp_mail($target_email, $email_subject, $function_call_result_message);
             }
 
         } else {
@@ -611,6 +544,86 @@ class YGL_Gform extends GFAddOn
                 'tooltip' => esc_html__('Overwrites form\'s Community ID. Must be a select field type.', 'ygl_gform'),
             ),
         );
+    }
+
+    /**
+     * @param $encode_key
+     * @param $post_url
+     * @param $json_query
+     * @param $active_form
+     * @return string
+     */
+    public function send_using_curl($encode_key, $post_url, $json_query, $active_form)
+    {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $post_url);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $json_query);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+        // curl_setopt($ch, CURLOPT_MAXREDIRS, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLINFO_HEADER_OUT, true);
+
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                'Authorization: BASIC ' . $encode_key,
+                'Accept: application/json',
+                'Content-Type: application/json'
+            )
+        );
+
+        $result = curl_exec($ch);
+        $error = curl_error($ch);
+
+        $info = curl_getinfo($ch);
+        $response = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+
+        // $this->write_log('cURL used to post to You\'ve Got Leads. Query Sent: ' . $json_query . ' Response: ' . $response . ' Result: ' . $result);
+
+        if ($result === false) {
+            $error = curl_error($ch);
+            $error_number = curl_errno($ch);
+            return 'cURL error posting Gravity Form ID #' . $active_form . ' to You\'ve Got Leads. Query Sent: ' . $json_query . ' Error information: ' . $error_number . ' ' . $error;
+        }
+
+        return 'cURL used to post Gravity Form ID #' . $active_form . ' to You\'ve Got Leads. Query Sent: ' . $json_query . ' Response: ' . $response . ' Result: ' . $result;
+    }
+
+    /**
+     * @param $encode_key
+     * @param $post_url
+     * @param $json_query
+     * @param $active_form
+     * @return string
+     */
+    public function send_using_remote_post($encode_key, $post_url, $json_query, $active_form)
+    {
+        $headers = array(
+            'Authorization' => 'BASIC ' . $encode_key,
+            'Accept' => 'application/json',
+            'Content-type' => 'application/json'
+        );
+
+        $em_connect = array(
+            'method' => 'POST',
+            'timeout' => 15,
+            'redirection' => 5,
+            'httpversion' => '1.0',
+            'blocking' => true,
+            'headers' => $headers,
+            'body' => $json_query,
+            'cookies' => array()
+        );
+
+        $response = wp_remote_post($post_url, $em_connect);
+
+        if (is_wp_error($response)) {
+            $error_message = $response->get_error_message();
+            return 'Wordpress Remote Post error posting Gravity Form ID #' . $active_form . ' to You\'ve Got Leads. Query Sent: ' . $json_query . ' Error information: ' . $error_message;
+        }
+
+        return 'Wordpress Remote Post used to post Gravity Form ID #' . $active_form . ' to You\'ve Got Leads. Query Sent: ' . $json_query . ' Response: ' . wp_remote_retrieve_response_code($response) . ' - ' . wp_remote_retrieve_response_message($response) . ' Result: ' . wp_remote_retrieve_body($response);
     }
 
 }
