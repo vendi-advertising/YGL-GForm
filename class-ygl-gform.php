@@ -13,6 +13,9 @@ class YGL_Gform extends GFAddOn
     protected $_title = 'You\'ve Got Leads Add-On for Gravity Forms';
     protected $_short_title = 'YGL GForm';
 
+    private $debug_email_address = null;
+    private $debug_email_subject = null;
+
     private static $_instance = null;
 
     /**
@@ -69,14 +72,11 @@ class YGL_Gform extends GFAddOn
         }
 
         if ($send_form == '1') {
-
-            $send_mail = false;
             if (isset($plugin_settings['send_debug_email']) && ($plugin_settings['send_debug_email'])) {
                 if (isset($plugin_settings['debug_email']) && !empty($plugin_settings['debug_email']) && is_email($plugin_settings['debug_email'])) {
-                    $send_mail = true;
-                    $target_email = $plugin_settings['debug_email'];
                     $site_name = get_bloginfo('name');
                     $email_subject = 'YGL GForm Debug mail for form id ' . $active_form . ' from ' . $site_name;
+                    $this->setup_debug_email_settings($plugin_settings['debug_email'], $email_subject);
                 } else {
                     $this->write_log('There is an issue with the debug email attached to the YGL Gform configuration. Please check the configuration.');
                 }
@@ -85,14 +85,12 @@ class YGL_Gform extends GFAddOn
             if (empty($plugin_settings['username']) || empty($plugin_settings['password'])) {
                 $function_call_result_message = 'YGL GForm has a form set to send, but no Username or Password has been set. Form ID: ' . $active_form . ' Please set the Username and Password in the YGL GForm settings menu.';
                 $this->write_log($function_call_result_message);
-                if ($send_mail) {
-                    wp_mail($target_email, $email_subject, $function_call_result_message);
-                }
+                $this->maybe_send_debug_email($function_call_result_message);
                 return;
-            } else {
-                $username = $plugin_settings['username'];
-                $password = $plugin_settings['password'];
             }
+
+            $username = $plugin_settings['username'];
+            $password = $plugin_settings['password'];
 
             // $this->write_log('YGL sending form ' . $active_form);
 
@@ -157,9 +155,7 @@ class YGL_Gform extends GFAddOn
             } else {
                 $function_call_result_message = 'YGL Gform has a form set to send, but no Community ID is atached to the form. Form ID: ' . $active_form . ' Please set the Community ID in the form\'s setting page.';
                 $this->write_log($function_call_result_message);
-                if ($send_mail) {
-                    wp_mail($target_email, $email_subject, $function_call_result_message);
-                }
+                $this->maybe_send_debug_email($function_call_result_message);
                 return;
             }
 
@@ -181,10 +177,7 @@ class YGL_Gform extends GFAddOn
             }
 
             $this->write_log($function_call_result_message);
-
-            if ($send_mail) {
-                wp_mail($target_email, $email_subject, $function_call_result_message);
-            }
+            $this->maybe_send_debug_email($function_call_result_message);
 
         } else {
             // $this->write_log('YGL not sending form ' . $active_form);
@@ -624,6 +617,22 @@ class YGL_Gform extends GFAddOn
         }
 
         return 'Wordpress Remote Post used to post Gravity Form ID #' . $active_form . ' to You\'ve Got Leads. Query Sent: ' . $json_query . ' Response: ' . wp_remote_retrieve_response_code($response) . ' - ' . wp_remote_retrieve_response_message($response) . ' Result: ' . wp_remote_retrieve_body($response);
+    }
+
+    /**
+     * @param $function_call_result_message
+     */
+    public function maybe_send_debug_email($function_call_result_message)
+    {
+        if ($this->debug_email_address && $this->debug_email_subject) {
+            wp_mail($this->debug_email_address, $this->debug_email_subject, $function_call_result_message);
+        }
+    }
+
+    public function setup_debug_email_settings($target_email, $email_subject)
+    {
+        $this->debug_email_address = $target_email;
+        $this->debug_email_subject = $email_subject;
     }
 
 }
