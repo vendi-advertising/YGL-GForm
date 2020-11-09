@@ -22,8 +22,8 @@ class YGL_Gform extends GFAddOn
      */
     public static function get_instance()
     {
-        if (self::$_instance == null) {
-            self::$_instance = new YGL_Gform();
+        if (self::$_instance === null) {
+            self::$_instance = new self();
         }
 
         return self::$_instance;
